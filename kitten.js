@@ -1,91 +1,5 @@
 (function() {
 	var root = this;
-	var ktGfx = function(obj) {
-		if (obj instanceof ktGfx) {
-			return obj;
-		}
-		if (!(this instanceof ktGfx)) {
-			return new ktGfx(obj);
-			this.ktGfxWrapped = obj;
-		}
-	};
-
-  	if (typeof exports !== 'undefined') {
-    	if (typeof module !== 'undefined' && module.exports) {
-      		exports = module.exports = ktGfx;
-    	}
-    	exports.ktGfx = ktGfx;
-  	} else {
-    	root.ktGfx = ktGfx;
-  	}
-
-
-	ktGfx.Point = function(x, y) {
-		this.x = x;
-		this.y = y;
-	};
-
-	ktGfx.Size = function(width, height) {
-		this.width = width;
-		this.height = height;
-	};
-
-	ktGfx.Vector = function(x, y) {
-		this.x = x;
-		this.y = y;
-	};
-
-	ktGfx.Sprite = function(context) {
-		this._context = context;
-		this._position = new ktGfx.Point(0.0, 0.0);
-		this._lastPosition = new ktGfx.Point(this._position.x, this._position.y);
-		this._size = new ktGfx.Size(10.0, 10.0);
-		this._vector = new ktGfx.Vector(0.0, 0.0);
-	};
-
-	ktGfx.Sprite.prototype.draw = function() {
-		this._context.clearRect(this._lastPosition.x, this._lastPosition.y, this._size.width, this._size.height);
-		this.render();
-	};
-
-	ktGfx.Sprite.prototype.render = function() {
-		var radius = this._size.width / 2;
-
-	    this._context.beginPath();
-	    this._context.fillStyle = 'green';
-	    this._context.fillRect(this._position.x, this._position.y, this._size.width, this._size.height);
-	    this._context.closePath();
-	};
-
-	ktGfx.Sprite.prototype.nextPosition = function() {
-		return new ktGfx.Vector(this._position.x + this._vector.x, this._position.y + this._vector.y);
-	};
-
-	ktGfx.Sprite.prototype.setPosition = function(position) {
-		if (position instanceof Point) {
-			this._position = position;
-		}
-	};
-
-	ktGfx.Sprite.prototype.update = function() {
-		this._lastPosition.x = this._position.x;
-		this._lastPosition.y = this._position.y;
-		this._position.x += this._vector.x;
-		this._position.y += this._vector.y;
-	};
-
-	ktGfx.Sprite.prototype.intersects = function(sprite) {
-		if (this._position.x + this._size.width <= sprite._position.x && this._position.y + this._size.height <= sprite._position.y) {
-			return true;
-		}
-
-		return false;
-	}
-
-}).call(this);
-
-(function() {
-	var root = this;
 
 	var kt = function(obj) {
 		if (obj instanceof kt) {
@@ -162,8 +76,8 @@
 		}
 
 		var sprite = new ktGfx.Sprite(canvasContext());
-		kt.sprite = new ktGfx.Sprite(canvasContext());
-		kt.sprite._vector = new ktGfx.Vector(5.0, 5.0);
+		sprite = new ktGfx.Sprite(canvasContext());
+		sprite._vector = new ktGfx.Vector(5.0, 5.0);
 		kt.addSprite(sprite);
 
 		setInterval(function() {
@@ -178,25 +92,26 @@
 
 		for (var i = 0; i < sprites.length; ++i) {
 			var sprite = sprites[i];
-			var nextPosition = sprite.nextPosition();
+			sprite.update();
 
+			// Correct the position of the update caused the sprite to move off the canvas.
+			var correctedPosition = sprite.correctedPosition(new ktGfx.Size(kt.canvas.scrollWidth, kt.canvas.scrollHeight),
+															 new ktGfx.Point(kt.canvas.offsetLeft, kt.canvas.offsetTop));
+			sprite._position.x += correctedPosition.x;
+			sprite._position.y += correctedPosition.y;
 
-			if (nextPosition.x >= kt.canvas.width) {
-				sprite.setPosition(new Vector(nextPosition))
+			// Reverse the vector if the sprite is at the edge of the canvas.
+			if ((sprite._position.x + sprite._size.width == kt.canvas.width && sprite._vector.x > 0) ||
+				(sprite._position.x == 0 && sprite._vector.x < 0)) {
+				sprite._vector.x *= -1;
 			}
 
-			if ((kt.sprite._position.x >= kt.canvas.width && kt.sprite._vector.x > 0) ||
-				(kt.sprite._position.x <= 0 && kt.sprite._vector.x < 0)) {
-				kt.sprite._vector.x *= -1;
+			if ((sprite._position.y + sprite._size.height == kt.canvas.height && sprite._vector.y > 0) ||
+				(sprite._position.y == 0 && sprite._vector.y < 0)) {
+				sprite._vector.y *= -1;
 			}
 
-			if ((kt.sprite._position.y >= kt.canvas.height && kt.sprite._vector.y > 0) ||
-				(kt.sprite._position.y <= 0 && kt.sprite._vector.y < 0)) {
-				kt.sprite._vector.y *= -1;
-			}
-
-			kt.sprite.update();
-			kt.sprite.draw();
+			sprite.draw();
 		}
 	};
 
@@ -214,3 +129,131 @@
 	}
 
 }.call(this));
+
+(function() {
+	var root = this;
+	var ktGfx = function(obj) {
+		if (obj instanceof ktGfx) {
+			return obj;
+		}
+		if (!(this instanceof ktGfx)) {
+			return new ktGfx(obj);
+			this.ktGfxWrapped = obj;
+		}
+	};
+
+  	if (typeof exports !== 'undefined') {
+    	if (typeof module !== 'undefined' && module.exports) {
+      		exports = module.exports = ktGfx;
+    	}
+    	exports.ktGfx = ktGfx;
+  	} else {
+    	root.ktGfx = ktGfx;
+  	}
+
+  	// Represent a point on a cartesian plane
+	ktGfx.Point = function(x, y) {
+		this.x = x;
+		this.y = y;
+	};
+
+	// Represent a size -- width, height
+	ktGfx.Size = function(width, height) {
+		this.width = width;
+		this.height = height;
+	};
+
+	// Represent a vector <x, y>
+	ktGfx.Vector = function(x, y) {
+		this.x = x;
+		this.y = y;
+	};
+
+	// Represent a sprite with position, size, vector, and a canvas.
+	ktGfx.Sprite = function(context) {
+		this._context = context;
+		this._position = new ktGfx.Point(0.0, 0.0);
+		this._lastPosition = new ktGfx.Point(this._position.x, this._position.y);
+		this._size = new ktGfx.Size(10.0, 10.0);
+		this._vector = new ktGfx.Vector(0.0, 0.0);
+	};
+
+	// Clears the old sprite drawing, redraws at current position.
+	ktGfx.Sprite.prototype.draw = function() {
+		this._context.clearRect(this._lastPosition.x, this._lastPosition.y, this._size.width, this._size.height);
+		this.render();
+	};
+
+	// Renders the sprite on the canvas at the current position.
+	ktGfx.Sprite.prototype.render = function() {
+		var radius = this._size.width / 2;
+
+	    this._context.beginPath();
+	    this._context.fillStyle = 'green';
+	    this._context.fillRect(this._position.x, this._position.y, this._size.width, this._size.height);
+	    this._context.closePath();
+	};
+
+	// Returns the next position of the sprite as a Point.
+	ktGfx.Sprite.prototype.nextPosition = function() {
+		return new ktGfx.Point(this._position.x + this._vector.x, this._position.y + this._vector.y);
+	};
+
+	// Sets the position of the sprite, without drawing.
+	ktGfx.Sprite.prototype.setPosition = function(position) {
+		if (position instanceof Point) {
+			this._position = position;
+		}
+	};
+
+	// Update the sprite's position by adding its current vector to its current position.
+	ktGfx.Sprite.prototype.update = function() {
+		this._lastPosition.x = this._position.x;
+		this._lastPosition.y = this._position.y;
+		this._position.x += this._vector.x;
+		this._position.y += this._vector.y;
+	};
+
+	ktGfx.Sprite.prototype.intersects = function(sprite) {
+
+
+		if (this._position.x + this._size.width <= sprite._position.x && this._position.y + this._size.height <= sprite._position.y) {
+			return true;
+		}
+
+		return false;
+	};
+
+	// Returns the offset (as a Position) needed to place the sprite at the nearest point 
+	// where it is fully contained in the container.
+	ktGfx.Sprite.prototype.correctedPosition = function(containerSize, containerOrigin) {
+		if (containerSize instanceof ktGfx.Size && containerOrigin instanceof ktGfx.Point) {
+			var xOffset = 0;
+			var yOffset = 0;
+
+			var nextPosition = this._position;
+
+			// Need to increase current x-position to correct.
+			if (nextPosition.x < containerOrigin.x) {
+				xOffset = containerOrigin.x - nextPosition.x;
+			}
+
+			// Need to decrease current x-position to correct.
+			else if (nextPosition.x + this._size.width > containerOrigin.x + containerSize.width) {
+				xOffset = containerOrigin.x + containerSize.width - nextPosition.x - this._size.width ;
+			}
+
+			// Need to increase current y-position to correct.
+			if (nextPosition.y < containerOrigin.y) {
+				yOffset = containerOrigin.y - nextPosition.y;
+			}
+
+			// Need to decrease current y-position to correct.
+			else if (nextPosition.y + this._size.height > containerOrigin.y + containerSize.height) {
+				yOffset = containerOrigin.y + containerSize.height - nextPosition.y - this._size.height;
+			}
+
+			return new ktGfx.Point(xOffset, yOffset);
+		}
+	};
+}).call(this);
