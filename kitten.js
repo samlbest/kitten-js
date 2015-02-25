@@ -139,12 +139,12 @@
 				var xVectorIsNegative = sprite._vector.x < 0 ? -1 : 1;
 				var yVectorIsNegative = sprite._vector.y < 0 ? -1 : 1;
 
-				if (Math.abs(sprite._vector.x) > sprite._vector._maxDirectionalSpeed) {
-					sprite._vector.x = sprite._vector._maxDirectionalSpeed * xVectorIsNegative;
+				if (Math.abs(sprite._vector.x) > sprite._maxDirectionalSpeed) {
+					sprite._vector.x = sprite._maxDirectionalSpeed * xVectorIsNegative;
 				}
 
-				if (Math.abs(sprite._vector.y) > sprite._vector._maxDirectionalSpeed) {
-					sprite._vector.y = sprite._vector._maxDirectionalSpeed * yVectorIsNegative;
+				if (Math.abs(sprite._vector.y) > sprite._maxDirectionalSpeed) {
+					sprite._vector.y = sprite._maxDirectionalSpeed * yVectorIsNegative;
 				}
 			}
 		}
