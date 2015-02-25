@@ -80,12 +80,30 @@
 		sprite._vector = new ktGfx.Vector(5.0, 5.0);
 		kt.addSprite(sprite);
 
-		setInterval(function() {
-			kt.moveSprites();
+		kt.startLoop();
 
-
-		}, 25);
+		return kt;
 	};
+
+	kt.startLoop = function() {
+		if (typeof kt.loop === 'undefined' || !kt.loop) {
+			kt.loopIteration = 0;
+			kt.loop = setInterval(function() {
+				kt.moveSprites();
+				++kt.loopIteration;
+			}, 25);
+		}
+		return kt;
+	};
+
+	kt.endLoop = function() {
+		if (typeof kt.loop !== 'undefined' && kt.loop) {
+			clearInterval(kt.loop);
+			kt.loop = null;
+			kt.loopIteration = 0;
+		}
+		return kt;
+	}
 
 	kt.moveSprites = function() {
 		var sprites = kt.getSprites();
@@ -100,6 +118,7 @@
 			sprite._position.x += correctedPosition.x;
 			sprite._position.y += correctedPosition.y;
 
+
 			// Reverse the vector if the sprite is at the edge of the canvas.
 			if ((sprite._position.x + sprite._size.width == kt.canvas.width && sprite._vector.x > 0) ||
 				(sprite._position.x == 0 && sprite._vector.x < 0)) {
@@ -112,7 +131,24 @@
 			}
 
 			sprite.draw();
+
+			if (kt.loopIteration % 10 == 0) {
+				sprite._vector.x += Helpers.randomIntFromInterval(-3, 3);
+				sprite._vector.y += Helpers.randomIntFromInterval(-3, 3);
+
+				var xVectorIsNegative = sprite._vector.x < 0 ? -1 : 1;
+				var yVectorIsNegative = sprite._vector.y < 0 ? -1 : 1;
+
+				if (Math.abs(sprite._vector.x) > sprite._vector._maxDirectionalSpeed) {
+					sprite._vector.x = sprite._vector._maxDirectionalSpeed * xVectorIsNegative;
+				}
+
+				if (Math.abs(sprite._vector.y) > sprite._vector._maxDirectionalSpeed) {
+					sprite._vector.y = sprite._vector._maxDirectionalSpeed * yVectorIsNegative;
+				}
+			}
 		}
+		return kt;
 	};
 
 	kt.getSprites = function() {
@@ -169,6 +205,10 @@
 		this.y = y;
 	};
 
+	ktGfx.Vector.prototype.magnitude = function() {
+		return Math.sqrt(this.x * this.x + this.y * this.y);
+	}
+
 	// Represent a sprite with position, size, vector, and a canvas.
 	ktGfx.Sprite = function(context) {
 		this._context = context;
@@ -176,6 +216,8 @@
 		this._lastPosition = new ktGfx.Point(this._position.x, this._position.y);
 		this._size = new ktGfx.Size(10.0, 10.0);
 		this._vector = new ktGfx.Vector(0.0, 0.0);
+		this._maxMagnitude = 10;
+		this._maxDirectionalSpeed = 10;
 	};
 
 	// Clears the old sprite drawing, redraws at current position.
@@ -257,3 +299,12 @@
 		}
 	};
 }).call(this);
+
+var Helpers = {
+	randomIntFromInterval: function(min, max) {
+		return Math.floor(Math.random() * (max - min + 1) + min);
+	},
+	randomFloatFromInterval: function(min, max) {
+		return Math.random() * (max - min + 1) + min;
+	}
+};
