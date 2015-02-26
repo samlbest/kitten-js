@@ -28,12 +28,27 @@
       var canvasContainer = document.createElement('div');
       var body = document.querySelector('body');
       document.body.appendChild(canvasContainer);
-      canvasContainer.style.position = 'absolute',
-        canvasContainer.style.left = '0px', canvasContainer.style.top = '0px',
-        canvasContainer.style.width = body.scrollWidth + 'px', canvasContainer.style.height = body.scrollHeight + 'px';
-        canvasContainer.style.zIndex = '10000';
+      canvasContainer.style.position = 'absolute';
+      canvasContainer.style.left = '0px';
+      canvasContainer.style.top = '0px';
+      canvasContainer.style.width = body.scrollWidth + 'px';
+      canvasContainer.style.height = body.scrollHeight + 'px';
+      canvasContainer.style.zIndex = '10000';
 
+
+      kt.parentContainer = body;
       kt.container = canvasContainer;
+
+
+      window.onresize = function() {
+        var newHeight = kt.parentContainer.scrollHeight;
+        var newWidth = kt.parentContainer.scrollWidth;
+
+        kt.canvas.style.width = newWidth + 'px';
+        kt.canvas.style.height = newHeight + 'px';
+        kt.canvas.width = newWidth;
+        kt.canvas.height = newHeight;
+      };
     }
 
     var canvas = document.createElement('canvas');
@@ -257,9 +272,25 @@
   };
 
   ktGfx.Sprite.prototype.intersects = function(sprite) {
+    var firstSpriteX = sprite;
+    var firstSpriteY = sprite;
 
+    var secondSpriteX = this;
+    var secondSpriteY = this;
 
-    if (this._position.x + this._size.width <= sprite._position.x && this._position.y + this._size.height <= sprite._position.y) {
+    // We need to include the width or height of the sprite that is lower on the plane in the comparison
+    if (this._position.x < sprite._position.x) {
+      firstSpriteX = this;
+      secondSpriteX = sprite;
+    }
+
+    if (this._position.y < sprite._position.y) {
+      firstSpriteY = this;
+      secondspriteY = this;
+    }
+
+    if (firstSpriteX._position.x + firstSpriteX._size.width <= secondSpriteX._position.x 
+      && firstSpriteY._position.y + firstSpriteY._size.height <= secondSpriteY._position.y) {
       return true;
     }
 
