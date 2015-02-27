@@ -20,18 +20,27 @@
     root.gfx = gfx;
   }
 
+  //================================================
+  //=====================POINT======================
+  //================================================
   // Represent a point on a cartesian plane
   gfx.Point = function(x, y) {
     this.x = x;
     this.y = y;
   };
 
+  //================================================
+  //=====================SIZE=======================
+  //================================================
   // Represent a size -- width, height
   gfx.Size = function(width, height) {
     this.width = width;
     this.height = height;
   };
 
+  //================================================
+  //====================VECTOR======================
+  //================================================
   // Represent a vector <x, y>
   gfx.Vector = function(x, y) {
     this.x = x;
@@ -42,6 +51,9 @@
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
+  //================================================
+  //====================SPRITE======================
+  //================================================
   // Represent a sprite with position, size, vector, and a canvas.
   gfx.Sprite = function(context, options) {
     var defaults = {
@@ -85,6 +97,42 @@
     return new gfx.Point(this._position.x + this._vector.x, this._position.y + this._vector.y);
   };
 
+  gfx.Sprite.prototype.correctVectorAndPositionIfNeeded = function(spriteMap, canvas) {
+    // Correct the position of the update caused the sprite to move off the canvas.
+    var correctedPosition = this.correctedPosition(new gfx.Size(canvas.scrollWidth, canvas.scrollHeight),
+                             new gfx.Point(canvas.offsetLeft, canvas.offsetTop));
+    this._position.x += correctedPosition.x;
+    this._position.y += correctedPosition.y;
+
+
+    // Reverse the vector if the sprite is at the edge of the canvas.
+    if ((this._position.x + this._size.width == canvas.width && this._vector.x > 0) ||
+      (this._position.x == 0 && this._vector.x < 0)) {
+      this._vector.x *= -1;
+    }
+
+    if ((this._position.y + this._size.height == canvas.height && this._vector.y > 0) ||
+      (this._position.y == 0 && this._vector.y < 0)) {
+      this._vector.y *= -1;
+    }
+  };
+
+  gfx.Sprite.prototype.randomizeVector = function() {
+    this._vector.x += Helpers.randomIntFromInterval(-3, 3);
+    this._vector.y += Helpers.randomIntFromInterval(-3, 3);
+
+    var xVectorIsNegative = this._vector.x < 0 ? -1 : 1;
+    var yVectorIsNegative = this._vector.y < 0 ? -1 : 1;
+
+    if (Math.abs(this._vector.x) > this._maxDirectionalSpeed) {
+      this._vector.x = this._maxDirectionalSpeed * xVectorIsNegative;
+    }
+
+    if (Math.abs(this._vector.y) > this._maxDirectionalSpeed) {
+      this._vector.y = this._maxDirectionalSpeed * yVectorIsNegative;
+    }
+  };
+
   // Sets the position of the sprite, without drawing.
   gfx.Sprite.prototype.setPosition = function(position) {
     if (position instanceof Point) {
@@ -93,7 +141,7 @@
   };
 
   // Update the sprite's position by adding its current vector to its current position.
-  gfx.Sprite.prototype.update = function() {
+  gfx.Sprite.prototype.moveAlongVector = function() {
     this._lastPosition.x = this._position.x;
     this._lastPosition.y = this._position.y;
     this._position.x += this._vector.x;
@@ -158,6 +206,42 @@
       return new gfx.Point(xOffset, yOffset);
     }
   };
+  //================================================
+  //==================SPRITEMAP=====================
+  //================================================
+  gfx.SpriteMap = function(canvas, options) {
+    var defaults = {
+      maxSprites : 10
+    };
+
+    var options = Helpers.extend({}, defaults, options);
+
+    this.maxSprites = options.maxSprites;
+    this.sprites = [];
+    this.canvas = canvas;
+    this.updateCount = 0;
+  };
+
+  gfx.SpriteMap.prototype.redrawSprites = function() {
+    for (var i = 0; i < this.sprites.length; ++i) {
+      var sprite = this.sprites[i];
+      sprite.moveAlongVector();
+
+      sprite.correctVectorAndPositionIfNeeded(this.sprites, this.canvas);
+
+      sprite.draw();
+
+      if (this.updateCount++ % 10 == 0) {
+        sprite.randomizeVector();
+      }
+    }
+  };
+
+  gfx.SpriteMap.prototype.addSprite = function(sprite) {
+    if (this.sprites.length < this.maxSprites && typeof sprite !== 'undefined' && sprite && sprite instanceof gfx.Sprite) {
+      this.sprites.push(sprite);
+    }
+  };
 }).call(this);
 
 (function() {
@@ -198,6 +282,8 @@
     button.style.cursor = 'pointer';
     button.style.borderRadius = '2.5px';
     button.onclick = kt.spawn;
+
+    return button;
   };
 
   var createCanvas = function() {
@@ -238,8 +324,7 @@
 
     kt.container.appendChild(canvas);
 
-    kt.canvas = canvas;
-    createSpawnButton();
+    return canvas;
 
   }
 
@@ -259,7 +344,11 @@
       }
     }
 
-    createCanvas();
+    kt.canvas = createCanvas();
+    kt.spawnButton = createSpawnButton();
+
+    kt.spriteMap = new gfx.SpriteMap(kt.canvas, null);
+    kt.startLoop();
 
     return kt;
   };
@@ -271,19 +360,15 @@
 
     var sprite = new kt.Kitten(canvasContext());
     sprite._vector = new gfx.Vector(5.0, 5.0);
-    kt.addSprite(sprite);
-
-    kt.startLoop();
+    kt.spriteMap.addSprite(sprite);
 
     return kt;
   };
 
   kt.startLoop = function() {
     if (typeof kt.loop === 'undefined' || !kt.loop) {
-      kt.loopIteration = 0;
       kt.loop = setInterval(function() {
-        kt.moveSprites();
-        ++kt.loopIteration;
+        kt.spriteMap.redrawSprites();
       }, 25);
     }
     return kt;
@@ -297,65 +382,6 @@
     }
     return kt;
   }
-
-  kt.moveSprites = function() {
-    var sprites = kt.getSprites();
-
-    for (var i = 0; i < sprites.length; ++i) {
-      var sprite = sprites[i];
-      sprite.update();
-
-      // Correct the position of the update caused the sprite to move off the canvas.
-      var correctedPosition = sprite.correctedPosition(new gfx.Size(kt.canvas.scrollWidth, kt.canvas.scrollHeight),
-                               new gfx.Point(kt.canvas.offsetLeft, kt.canvas.offsetTop));
-      sprite._position.x += correctedPosition.x;
-      sprite._position.y += correctedPosition.y;
-
-
-      // Reverse the vector if the sprite is at the edge of the canvas.
-      if ((sprite._position.x + sprite._size.width == kt.canvas.width && sprite._vector.x > 0) ||
-        (sprite._position.x == 0 && sprite._vector.x < 0)) {
-        sprite._vector.x *= -1;
-      }
-
-      if ((sprite._position.y + sprite._size.height == kt.canvas.height && sprite._vector.y > 0) ||
-        (sprite._position.y == 0 && sprite._vector.y < 0)) {
-        sprite._vector.y *= -1;
-      }
-
-      sprite.draw();
-
-      if (kt.loopIteration % 10 == 0) {
-        sprite._vector.x += Helpers.randomIntFromInterval(-3, 3);
-        sprite._vector.y += Helpers.randomIntFromInterval(-3, 3);
-
-        var xVectorIsNegative = sprite._vector.x < 0 ? -1 : 1;
-        var yVectorIsNegative = sprite._vector.y < 0 ? -1 : 1;
-
-        if (Math.abs(sprite._vector.x) > sprite._maxDirectionalSpeed) {
-          sprite._vector.x = sprite._maxDirectionalSpeed * xVectorIsNegative;
-        }
-
-        if (Math.abs(sprite._vector.y) > sprite._maxDirectionalSpeed) {
-          sprite._vector.y = sprite._maxDirectionalSpeed * yVectorIsNegative;
-        }
-      }
-    }
-    return kt;
-  };
-
-  kt.getSprites = function() {
-    if (typeof kt.spriteMap === 'undefined' || !kt.spriteMap) {
-      kt.spriteMap = Array();
-    }
-    return kt.spriteMap;
-  };
-
-  kt.addSprite = function(sprite) {
-    if (sprite instanceof gfx.Sprite) {
-      kt.getSprites().push(sprite);
-    }
-  };
 
   kt.Kitten = function(context, options) {
 
