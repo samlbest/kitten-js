@@ -1,3 +1,165 @@
+
+(function() {
+  var root = this;
+  var gfx = function(obj) {
+    if (obj instanceof gfx) {
+      return obj;
+    }
+    if (!(this instanceof gfx)) {
+      return new gfx(obj);
+      this.gfxWrapped = obj;
+    }
+  };
+
+  if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = gfx;
+    }
+    exports.gfx = gfx;
+  } else {
+    root.gfx = gfx;
+  }
+
+  // Represent a point on a cartesian plane
+  gfx.Point = function(x, y) {
+    this.x = x;
+    this.y = y;
+  };
+
+  // Represent a size -- width, height
+  gfx.Size = function(width, height) {
+    this.width = width;
+    this.height = height;
+  };
+
+  // Represent a vector <x, y>
+  gfx.Vector = function(x, y) {
+    this.x = x;
+    this.y = y;
+  };
+
+  gfx.Vector.prototype.magnitude = function() {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
+
+  // Represent a sprite with position, size, vector, and a canvas.
+  gfx.Sprite = function(context, options) {
+    var defaults = {
+      position : new gfx.Point(0.0, 0.0),
+      lastPosition : new gfx.Point(0.0, 0.0),
+      size : new gfx.Size(10.0, 10.0),
+      vector : new gfx.Vector(0.0, 0.0),
+      maxMagnitude : 10,
+      maxDirectionalSpeed : 10
+    };
+
+    var options = Helpers.extend({}, defaults, options);
+
+    this._context = context;
+    this._position = options.position;
+    this._lastPosition = options.lastPosition;
+    this._size = options.size;
+    this._vector = options.vector;
+    this._maxMagnitude = options.maxMagnitude;
+    this._maxDirectionalSpeed = options.maxDirectionalSpeed;
+  };
+
+  // Clears the old sprite drawing, redraws at current position.
+  gfx.Sprite.prototype.draw = function() {
+    this._context.clearRect(this._lastPosition.x, this._lastPosition.y, this._size.width, this._size.height);
+    this.render();
+  };
+
+  // Renders the sprite on the canvas at the current position.
+  gfx.Sprite.prototype.render = function() {
+    var radius = this._size.width / 2;
+
+    this._context.beginPath();
+    this._context.fillStyle = 'green';
+    this._context.fillRect(this._position.x, this._position.y, this._size.width, this._size.height);
+    this._context.closePath();
+  };
+
+  // Returns the next position of the sprite as a Point.
+  gfx.Sprite.prototype.nextPosition = function() {
+    return new gfx.Point(this._position.x + this._vector.x, this._position.y + this._vector.y);
+  };
+
+  // Sets the position of the sprite, without drawing.
+  gfx.Sprite.prototype.setPosition = function(position) {
+    if (position instanceof Point) {
+      this._position = position;
+    }
+  };
+
+  // Update the sprite's position by adding its current vector to its current position.
+  gfx.Sprite.prototype.update = function() {
+    this._lastPosition.x = this._position.x;
+    this._lastPosition.y = this._position.y;
+    this._position.x += this._vector.x;
+    this._position.y += this._vector.y;
+  };
+
+  gfx.Sprite.prototype.intersects = function(sprite) {
+    var firstSpriteX = sprite;
+    var firstSpriteY = sprite;
+
+    var secondSpriteX = this;
+    var secondSpriteY = this;
+
+    // We need to include the width or height of the sprite that is lower on the plane in the comparison
+    if (this._position.x < sprite._position.x) {
+      firstSpriteX = this;
+      secondSpriteX = sprite;
+    }
+
+    if (this._position.y < sprite._position.y) {
+      firstSpriteY = this;
+      secondspriteY = this;
+    }
+
+    if (firstSpriteX._position.x + firstSpriteX._size.width <= secondSpriteX._position.x 
+      && firstSpriteY._position.y + firstSpriteY._size.height <= secondSpriteY._position.y) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Returns the offset (as a Position) needed to place the sprite at the nearest point 
+  // where it is fully contained in the container.
+  gfx.Sprite.prototype.correctedPosition = function(containerSize, containerOrigin) {
+    if (containerSize instanceof gfx.Size && containerOrigin instanceof gfx.Point) {
+      var xOffset = 0;
+      var yOffset = 0;
+
+      var nextPosition = this._position;
+
+      // Need to increase current x-position to correct.
+      if (nextPosition.x < containerOrigin.x) {
+        xOffset = containerOrigin.x - nextPosition.x;
+      }
+
+      // Need to decrease current x-position to correct.
+      else if (nextPosition.x + this._size.width > containerOrigin.x + containerSize.width) {
+        xOffset = containerOrigin.x + containerSize.width - nextPosition.x - this._size.width ;
+      }
+
+      // Need to increase current y-position to correct.
+      if (nextPosition.y < containerOrigin.y) {
+        yOffset = containerOrigin.y - nextPosition.y;
+      }
+
+      // Need to decrease current y-position to correct.
+      else if (nextPosition.y + this._size.height > containerOrigin.y + containerSize.height) {
+        yOffset = containerOrigin.y + containerSize.height - nextPosition.y - this._size.height;
+      }
+
+      return new gfx.Point(xOffset, yOffset);
+    }
+  };
+}).call(this);
+
 (function() {
   var root = this;
 
@@ -85,14 +247,13 @@
     return kt;
   };
 
-  kt.spawn = function(obj) {
+  kt.spawn = function(options) {
     if (typeof obj !== 'undefined' && obj) {
       kt.type = obj.type !== 'undefined' && obj.type ? obj.type : 'kitten'; 
     }
 
-    var sprite = new ktGfx.Sprite(canvasContext());
-    sprite = new ktGfx.Sprite(canvasContext());
-    sprite._vector = new ktGfx.Vector(5.0, 5.0);
+    var sprite = new kt.Kitten(canvasContext());
+    sprite._vector = new gfx.Vector(5.0, 5.0);
     kt.addSprite(sprite);
 
     kt.startLoop();
@@ -128,8 +289,8 @@
       sprite.update();
 
       // Correct the position of the update caused the sprite to move off the canvas.
-      var correctedPosition = sprite.correctedPosition(new ktGfx.Size(kt.canvas.scrollWidth, kt.canvas.scrollHeight),
-                               new ktGfx.Point(kt.canvas.offsetLeft, kt.canvas.offsetTop));
+      var correctedPosition = sprite.correctedPosition(new gfx.Size(kt.canvas.scrollWidth, kt.canvas.scrollHeight),
+                               new gfx.Point(kt.canvas.offsetLeft, kt.canvas.offsetTop));
       sprite._position.x += correctedPosition.x;
       sprite._position.y += correctedPosition.y;
 
@@ -174,162 +335,36 @@
   };
 
   kt.addSprite = function(sprite) {
-    if (sprite instanceof ktGfx.Sprite) {
+    if (sprite instanceof gfx.Sprite) {
       kt.getSprites().push(sprite);
     }
-  }
+  };
 
+  kt.Kitten = function(context, options) {
+    var defaults = {
+      position : new gfx.Point(0.0, 0.0),
+      lastPosition : new gfx.Point(0.0, 0.0),
+      size : new gfx.Size(25.0, 25.0),
+      vector : new gfx.Vector(0.0, 0.0),
+      maxMagnitude : 10,
+      maxDirectionalSpeed : 10
+    };
+
+    var options = Helpers.extend({}, defaults, options);
+
+    var kitten = new gfx.Sprite(context, options);
+    me.render = function() {
+      var radius = this._size.width / 2;
+
+      this._context.beginPath();
+      this._context.fillStyle = 'blue';
+      this._context.fillRect(this._position.x, this._position.y, this._size.width, this._size.height);
+      this._context.closePath();
+    }
+    return me;
+  };
 }.call(this));
 
-(function() {
-  var root = this;
-  var ktGfx = function(obj) {
-    if (obj instanceof ktGfx) {
-      return obj;
-    }
-    if (!(this instanceof ktGfx)) {
-      return new ktGfx(obj);
-      this.ktGfxWrapped = obj;
-    }
-  };
-
-  if (typeof exports !== 'undefined') {
-    if (typeof module !== 'undefined' && module.exports) {
-      exports = module.exports = ktGfx;
-    }
-    exports.ktGfx = ktGfx;
-  } else {
-    root.ktGfx = ktGfx;
-  }
-
-  // Represent a point on a cartesian plane
-  ktGfx.Point = function(x, y) {
-    this.x = x;
-    this.y = y;
-  };
-
-  // Represent a size -- width, height
-  ktGfx.Size = function(width, height) {
-    this.width = width;
-    this.height = height;
-  };
-
-  // Represent a vector <x, y>
-  ktGfx.Vector = function(x, y) {
-    this.x = x;
-    this.y = y;
-  };
-
-  ktGfx.Vector.prototype.magnitude = function() {
-    return Math.sqrt(this.x * this.x + this.y * this.y);
-  }
-
-  // Represent a sprite with position, size, vector, and a canvas.
-  ktGfx.Sprite = function(context) {
-    this._context = context;
-    this._position = new ktGfx.Point(0.0, 0.0);
-    this._lastPosition = new ktGfx.Point(this._position.x, this._position.y);
-    this._size = new ktGfx.Size(10.0, 10.0);
-    this._vector = new ktGfx.Vector(0.0, 0.0);
-    this._maxMagnitude = 10;
-    this._maxDirectionalSpeed = 10;
-  };
-
-  // Clears the old sprite drawing, redraws at current position.
-  ktGfx.Sprite.prototype.draw = function() {
-    this._context.clearRect(this._lastPosition.x, this._lastPosition.y, this._size.width, this._size.height);
-    this.render();
-  };
-
-  // Renders the sprite on the canvas at the current position.
-  ktGfx.Sprite.prototype.render = function() {
-    var radius = this._size.width / 2;
-
-    this._context.beginPath();
-    this._context.fillStyle = 'green';
-    this._context.fillRect(this._position.x, this._position.y, this._size.width, this._size.height);
-    this._context.closePath();
-  };
-
-  // Returns the next position of the sprite as a Point.
-  ktGfx.Sprite.prototype.nextPosition = function() {
-    return new ktGfx.Point(this._position.x + this._vector.x, this._position.y + this._vector.y);
-  };
-
-  // Sets the position of the sprite, without drawing.
-  ktGfx.Sprite.prototype.setPosition = function(position) {
-    if (position instanceof Point) {
-      this._position = position;
-    }
-  };
-
-  // Update the sprite's position by adding its current vector to its current position.
-  ktGfx.Sprite.prototype.update = function() {
-    this._lastPosition.x = this._position.x;
-    this._lastPosition.y = this._position.y;
-    this._position.x += this._vector.x;
-    this._position.y += this._vector.y;
-  };
-
-  ktGfx.Sprite.prototype.intersects = function(sprite) {
-    var firstSpriteX = sprite;
-    var firstSpriteY = sprite;
-
-    var secondSpriteX = this;
-    var secondSpriteY = this;
-
-    // We need to include the width or height of the sprite that is lower on the plane in the comparison
-    if (this._position.x < sprite._position.x) {
-      firstSpriteX = this;
-      secondSpriteX = sprite;
-    }
-
-    if (this._position.y < sprite._position.y) {
-      firstSpriteY = this;
-      secondspriteY = this;
-    }
-
-    if (firstSpriteX._position.x + firstSpriteX._size.width <= secondSpriteX._position.x 
-      && firstSpriteY._position.y + firstSpriteY._size.height <= secondSpriteY._position.y) {
-      return true;
-    }
-
-    return false;
-  };
-
-  // Returns the offset (as a Position) needed to place the sprite at the nearest point 
-  // where it is fully contained in the container.
-  ktGfx.Sprite.prototype.correctedPosition = function(containerSize, containerOrigin) {
-    if (containerSize instanceof ktGfx.Size && containerOrigin instanceof ktGfx.Point) {
-      var xOffset = 0;
-      var yOffset = 0;
-
-      var nextPosition = this._position;
-
-      // Need to increase current x-position to correct.
-      if (nextPosition.x < containerOrigin.x) {
-        xOffset = containerOrigin.x - nextPosition.x;
-      }
-
-      // Need to decrease current x-position to correct.
-      else if (nextPosition.x + this._size.width > containerOrigin.x + containerSize.width) {
-        xOffset = containerOrigin.x + containerSize.width - nextPosition.x - this._size.width ;
-      }
-
-      // Need to increase current y-position to correct.
-      if (nextPosition.y < containerOrigin.y) {
-        yOffset = containerOrigin.y - nextPosition.y;
-      }
-
-      // Need to decrease current y-position to correct.
-      else if (nextPosition.y + this._size.height > containerOrigin.y + containerSize.height) {
-        yOffset = containerOrigin.y + containerSize.height - nextPosition.y - this._size.height;
-      }
-
-      return new ktGfx.Point(xOffset, yOffset);
-    }
-  };
-}).call(this);
 
 var Helpers = {
   randomIntFromInterval: function(min, max) {
@@ -337,5 +372,16 @@ var Helpers = {
   },
   randomFloatFromInterval: function(min, max) {
     return Math.random() * (max - min + 1) + min;
+  },
+  // Mer
+  extend: function() {
+    for (var i = 1; i < arguments.length; ++i) {
+      for (var key in arguments[i]) {
+        if (arguments[i].hasOwnProperty(key)) {
+            arguments[0][key] = arguments[i][key];
+        }
+      }
+    }
+    return arguments[0];
   }
 };
