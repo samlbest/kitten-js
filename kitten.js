@@ -76,16 +76,15 @@
     this._maxDirectionalSpeed = options.maxDirectionalSpeed;
   };
 
-  // Clears the old sprite drawing, redraws at current position.
+  // Clears the old sprite drawing, re-renders at current position.
   gfx.Sprite.prototype.draw = function() {
     this._context.clearRect(this._lastPosition.x, this._lastPosition.y, this._size.width, this._size.height);
     this.render();
   };
 
-  // Renders the sprite on the canvas at the current position.
+  // Renders the sprite on the canvas at the current position using the default appearance.
   gfx.Sprite.prototype.render = function() {
     var radius = this._size.width / 2;
-
     this._context.beginPath();
     this._context.fillStyle = 'green';
     this._context.fillRect(this._position.x, this._position.y, this._size.width, this._size.height);
@@ -97,6 +96,8 @@
     return new gfx.Point(this._position.x + this._vector.x, this._position.y + this._vector.y);
   };
 
+  // Changes the vector of the sprite to stay in the canvas. This creates a "bounce" effect.
+  // Also calculates bounce based on the position of the other sprites in the SpriteMap.
   gfx.Sprite.prototype.correctVectorAndPositionIfNeeded = function(spriteMap, canvas) {
     // Correct the position of the update caused the sprite to move off the canvas.
     var correctedPosition = this.correctedPosition(new gfx.Size(canvas.scrollWidth, canvas.scrollHeight),
@@ -115,8 +116,18 @@
       (this._position.y == 0 && this._vector.y < 0)) {
       this._vector.y *= -1;
     }
+
+
+    for (var i = 0; i < spriteMap.length; ++i) {
+      var sprite = spriteMap[i];
+      if (sprite !== this && sprite.intersects(this)) {
+        sprite._vector.x *= -1;
+        sprite._vector.y *= -1;
+      }
+    }
   };
 
+  // Adjusts the sprite's vector by a random amount.
   gfx.Sprite.prototype.randomizeVector = function() {
     this._vector.x += Helpers.randomIntFromInterval(-3, 3);
     this._vector.y += Helpers.randomIntFromInterval(-3, 3);
@@ -148,6 +159,7 @@
     this._position.y += this._vector.y;
   };
 
+  // True if the two sprites intersect with each other.
   gfx.Sprite.prototype.intersects = function(sprite) {
     var firstSpriteX = sprite;
     var firstSpriteY = sprite;
@@ -166,8 +178,14 @@
       secondspriteY = this;
     }
 
-    if (firstSpriteX._position.x + firstSpriteX._size.width <= secondSpriteX._position.x 
-      && firstSpriteY._position.y + firstSpriteY._size.height <= secondSpriteY._position.y) {
+    var firstSpriteRight = firstSpriteX._position.x + firstSpriteX._size.width;
+    var secondSpriteLeft = secondSpriteX._position.x;
+    var secondSpriteRight = secondSpriteX._position.y;
+
+    var firstSpriteBottom = firstSpriteY._position.y + firstSpriteY._size.height;
+    var secondSpriteTop = secondSpriteY._position.y;
+
+    if (firstSpriteRight >= secondSpriteLeft && firstSpriteBottom >= secondSpriteTop) {
       return true;
     }
 
@@ -221,7 +239,8 @@
     this.canvas = canvas;
     this.updateCount = 0;
   };
-
+  
+  // Triggers recalculation of sprite position and then redraws the sprites at their next position.
   gfx.SpriteMap.prototype.redrawSprites = function() {
     for (var i = 0; i < this.sprites.length; ++i) {
       var sprite = this.sprites[i];
