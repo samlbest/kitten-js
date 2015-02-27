@@ -185,6 +185,21 @@
   
   kt.version = '0.01';
 
+  var createSpawnButton = function() {
+    var button = document.createElement('div');
+    kt.container.appendChild(button);
+    button.style.right = '6px';
+    button.style.top = '6px';
+    button.style.width = '5px';
+    button.style.height = '5px';
+    button.style.background = '#fc1ed3';
+    button.style.position = 'absolute';
+    button.style.zIndex = '10000';
+    button.style.cursor = 'pointer';
+    button.style.borderRadius = '2.5px';
+    button.onclick = kt.spawn;
+  };
+
   var createCanvas = function() {
     if (typeof kt.container === 'undefined' || !kt.container) {
       var canvasContainer = document.createElement('div');
@@ -224,6 +239,8 @@
     kt.container.appendChild(canvas);
 
     kt.canvas = canvas;
+    createSpawnButton();
+
   }
 
   var canvasContext = function() {
@@ -341,6 +358,8 @@
   };
 
   kt.Kitten = function(context, options) {
+
+    // Modify default traits
     var defaults = {
       position : new gfx.Point(0.0, 0.0),
       lastPosition : new gfx.Point(0.0, 0.0),
@@ -353,15 +372,17 @@
     var options = Helpers.extend({}, defaults, options);
 
     var kitten = new gfx.Sprite(context, options);
-    me.render = function() {
-      var radius = this._size.width / 2;
 
+    // Define appearance of kitten sprite.
+    kitten.render = function() {
+      var radius = this._size.width / 2;
       this._context.beginPath();
       this._context.fillStyle = 'blue';
       this._context.fillRect(this._position.x, this._position.y, this._size.width, this._size.height);
       this._context.closePath();
     }
-    return me;
+
+    return kitten;
   };
 }.call(this));
 
