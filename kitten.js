@@ -300,6 +300,7 @@
     button.style.zIndex = '10000';
     button.style.cursor = 'pointer';
     button.style.borderRadius = '2.5px';
+    button.style.pointerEvents = 'all';
     button.onclick = kt.spawn;
 
     return button;
@@ -316,7 +317,7 @@
       canvasContainer.style.width = body.scrollWidth + 'px';
       canvasContainer.style.height = body.scrollHeight + 'px';
       canvasContainer.style.zIndex = '10000';
-
+      canvasContainer.style.pointerEvents = 'none';
 
       kt.parentContainer = body;
       kt.container = canvasContainer;
