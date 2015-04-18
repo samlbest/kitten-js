@@ -1,4 +1,3 @@
-
 (function() {
   var root = this;
   var gfx = function(obj) {
@@ -404,6 +403,33 @@
   }
 
   kt.Kitten = function(context, options) {
+    // Modify default traits
+    var defaults = {
+      position : new gfx.Point(0.0, 0.0),
+      lastPosition : new gfx.Point(0.0, 0.0),
+      size : new gfx.Size(50.0, 50.0),
+      vector : new gfx.Vector(0.0, 0.0),
+      maxMagnitude : 10,
+      maxDirectionalSpeed : 10
+    };
+
+    var options = Helpers.extend({}, defaults, options);
+
+    var kitten = new gfx.Sprite(context, options);
+    kitten.render = function() {
+      var img = new Image();
+      img.src = 'sprites/cat.png';
+      this._context.drawImage(img, 
+                              this._position.x,
+                              this._position.y,
+                              this._size.width,
+                              this._size.height); 
+    }
+    
+    return kitten;
+  }
+
+  kt.Square = function(context, options) {
 
     // Modify default traits
     var defaults = {
@@ -417,10 +443,10 @@
 
     var options = Helpers.extend({}, defaults, options);
 
-    var kitten = new gfx.Sprite(context, options);
+    var square = new gfx.Sprite(context, options);
 
-    // Define appearance of kitten sprite.
-    kitten.render = function() {
+    // Define appearance
+    square.render = function() {
       var radius = this._size.width / 2;
       this._context.beginPath();
       this._context.fillStyle = 'blue';
@@ -428,7 +454,7 @@
       this._context.closePath();
     }
 
-    return kitten;
+    return square;
   };
 }.call(this));
 
