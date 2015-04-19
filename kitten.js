@@ -51,6 +51,50 @@
   }
 
   //================================================
+  //===================RECTANGLE====================
+  //================================================
+
+  gfx.Rectangle = function(position, size) {
+    this._position = position;
+    this._size = size;
+  };
+
+  // True if the two sprites intersect with each other.
+  gfx.Rectangle.prototype.intersects = function(rectangle) {
+    var firstRectangleX = rectangle;
+    var firstRectangleY = rectangle;
+
+    var secondRectangleX = this;
+    var secondRectangleY = this;
+
+    // We need to include the width or height of the rectangle that is lower on the plane in the comparison
+    if (this._position.x < rectangle._position.x) {
+      firstRectangleX = this;
+      secondRectangleX = rectangle;
+    }
+
+    if (this._position.y < rectangle._position.y) {
+      firstRectangleY = this;
+      secondRectangleY = rectangle;
+    }
+
+    var firstRectangleRight = firstRectangleX._position.x + firstRectangleX._size.width;
+    var secondRectangleLeft = secondRectangleX._position.x;
+    var secondRectangleRight = secondRectangleX._position.y;
+
+    var firstRectangleBottom = firstRectangleY._position.y + firstRectangleY._size.height;
+    var secondRectangleTop = secondRectangleY._position.y;
+
+    if (firstRectangleRight >= secondRectangleLeft && firstRectangleBottom >= secondRectangleTop) {
+      return true;
+    }
+
+    return false;
+  };
+
+
+
+  //================================================
   //====================SPRITE======================
   //================================================
   // Represent a sprite with position, size, vector, and a canvas.
@@ -97,7 +141,7 @@
 
   // Changes the vector of the sprite to stay in the canvas. This creates a "bounce" effect.
   // Also calculates bounce based on the position of the other sprites in the SpriteMap.
-  gfx.Sprite.prototype.correctVectorAndPositionIfNeeded = function(spriteMap, canvas) {
+  gfx.Sprite.prototype.correctVectorAndPositionIfNeeded = function(spriteMap, rectangles, canvas) {
     // Correct the position of the update caused the sprite to move off the canvas.
     var correctedPosition = this.correctedPosition(new gfx.Size(canvas.scrollWidth, canvas.scrollHeight),
                              new gfx.Point(canvas.offsetLeft, canvas.offsetTop));
@@ -116,6 +160,13 @@
       this._vector.y *= -1;
     }
 
+    var spriteRectangle = new gfx.Rectangle(this._position, this._size);
+    for (var i = 0; i < rectangles.length; ++i) {
+      if (spriteRectangle.intersects(rectangles[i])) {
+        this._vector.x *= -1;
+        this._vector.y *= -1;
+      }
+    }
 
     for (var i = 0; i < spriteMap.length; ++i) {
       var sprite = spriteMap[i];
@@ -124,6 +175,7 @@
         sprite._vector.y *= -1;
       }
     }
+
   };
 
   // Adjusts the sprite's vector by a random amount.
@@ -174,7 +226,7 @@
 
     if (this._position.y < sprite._position.y) {
       firstSpriteY = this;
-      secondspriteY = this;
+      secondSpriteY = sprite;
     }
 
     var firstSpriteRight = firstSpriteX._position.x + firstSpriteX._size.width;
@@ -223,9 +275,11 @@
       return new gfx.Point(xOffset, yOffset);
     }
   };
+ 
   //================================================
   //==================SPRITEMAP=====================
-  //================================================
+ 
+ //================================================
   gfx.SpriteMap = function(canvas, options) {
     var defaults = {
       maxSprites : 10
@@ -245,12 +299,12 @@
       var sprite = this.sprites[i];
       sprite.moveAlongVector();
 
-      sprite.correctVectorAndPositionIfNeeded(this.sprites, this.canvas);
+      sprite.correctVectorAndPositionIfNeeded(this.sprites, this.getAllDomElements(), this.canvas);
 
       sprite.draw();
 
       if (this.updateCount++ % 10 == 0) {
-        sprite.randomizeVector();
+        //sprite.randomizeVector();
       }
     }
   };
@@ -260,6 +314,28 @@
       this.sprites.push(sprite);
     }
   };
+ 
+  gfx.SpriteMap.prototype.getAllDomElements = function() {
+    var allElements = document.body.getElementsByTagName('*');
+    var objects = [];
+
+    for (var i = 0; i < allElements.length; ++i) {
+      var element = allElements[i];
+      var x = element.offsetLeft;
+      var y = element.offsetTop;
+      var width = element.offsetWidth;
+      var height = element.offsetHeight;
+
+      var position = new gfx.Point(x, y);
+      var size = new gfx.Size(width, height);
+
+      if (x != 0 && y != 0 && (width != 0 && height != 0)) {
+        objects.push(new gfx.Rectangle(position, size));
+      }
+    }
+    return objects;
+  }
+
 }).call(this);
 
 (function() {
@@ -354,7 +430,6 @@
 
     return null;
   }
-
   kt.init = function(obj) {
     kt.container = null;
     if (typeof obj !== 'undefined' && obj) {
@@ -402,6 +477,7 @@
     return kt;
   }
 
+  
   kt.Kitten = function(context, options) {
     // Modify default traits
     var defaults = {
